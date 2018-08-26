@@ -11,6 +11,8 @@ from skimage.color import rgb2gray # Help us to gray our frames
 from collections import defaultdict
 warnings.filterwarnings('ignore') # used to ignore warning messages
 
+# testing git
+
 # Create our environment
 env = gym_super_mario_bros.make('SuperMarioBros-v0') # Creates the environment
 env = BinarySpaceToDiscreteSpaceEnv(env, COMPLEX_MOVEMENT) # have to pick complex movement to try different combos
