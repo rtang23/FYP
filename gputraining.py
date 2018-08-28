@@ -1,24 +1,23 @@
-import tensorflow as tf      # Deep Learning library
-import numpy as np           # Handle matrices
-import random
-import warnings              # This ignore all the warning messages that are normally printed during the training because of skiimage
-from collections import deque # Ordered collection with ends
+import tensorflow as tf             # Deep Learning library
+import numpy as np                  # Handle matrices
+import random                       # used to see if we explore or exploit
+import warnings                     # This ignore all the warning messages that are normally printed during the training because of skiimage
+from collections import deque       # Ordered collection with ends
 from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
-import gym_super_mario_bros
+import gym_super_mario_bros         # import Kautenja's gym environment
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
-from skimage import transform # Help us to preprocess the frames
-from skimage.color import rgb2gray # Help us to gray our frames
-from collections import defaultdict
-warnings.filterwarnings('ignore') # used to ignore warning messages
+from skimage import transform       # Help us to preprocess the frames
+from skimage.color import rgb2gray  # Help us to gray our frames
+warnings.filterwarnings('ignore')   # used to ignore warning messages
 
 # Create our environment
 env = gym_super_mario_bros.make('SuperMarioBros-v0') # Creates the environment
 env = BinarySpaceToDiscreteSpaceEnv(env, COMPLEX_MOVEMENT) # have to pick complex movement to try different combos
 
-env.render() # updates the action within the game
+env.render() # updates the action within the game or pretty much shows you the game is playing
 
-print("The size of our frame is: ", env.observation_space)
-print("The action size is : ", env.action_space.n)
+print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
+print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
 
 # Here we create an hot encoded version of our actions
 # possible_actions = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0]...]
@@ -37,16 +36,15 @@ def preprocess_frame(frame):
     normalized_frame = cropped_frame / 255.0
 
     # Resize
-    # Thanks to Mikołaj Walkowiak
     preprocessed_frame = transform.resize(normalized_frame, [110, 84])
 
     return preprocessed_frame  # 110x84x1 frame
 
 
-stack_size = 2  # We stack 4 frames
+stack_size = 4  # We stack 4 frames
 
 # Initialize deque with zero-images one array for each image
-stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=2)
+stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
 
 def stack_frames(stacked_frames, state, is_new_episode):
@@ -55,7 +53,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
     if is_new_episode:
         # Clear our stacked_frames
-        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=2)
+        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
         # Because we're in a new episode, copy the same frame 4x
         stacked_frames.append(frame)
@@ -76,7 +74,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
     return stacked_state, stacked_frames
 
 ### MODEL HYPERPARAMETERS
-state_size = [110, 84, 2]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
+state_size = [110, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
 action_size = env.action_space.n # 8 possible actions
 learning_rate =  0.00025      # Alpha (aka learning rate)
 
@@ -89,16 +87,17 @@ batch_size = 64                # Batch size
 explore_start = 1.0            # exploration probability at start
 explore_stop = 0.01            # minimum exploration probability
 decay_rate = 0.00001           # exponential decay rate for exploration prob
+decay_step = 0
 
 # Q learning hyperparameters
 gamma = 0.9                    # Discounting rate
 
-### MEMORY HYPERPARAMETERS
+### MEMORY HYPERPARAMETERSde a bet wi
 pretrain_length = batch_size   # Number of experiences stored in the Memory when initialized for the first time
 memory_size = 1000000          # Number of experiences the Memory can keep
 
 ### PREPROCESSING HYPERPARAMETERS
-stack_size = 2                 # Number of frames stacked
+stack_size = 4                 # Number of frames stacked
 
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
@@ -108,10 +107,11 @@ episode_render = False
 
 
 class DQNetwork:
-    def __init__(self, state_size, action_size, learning_rate, name='DQNetwork'):
+    def __init__(self, state_size, action_size, decay_step, learning_rate, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate = learning_rate
+        self.decay_step = decay_step
+        self.learning_rate = tf.train.exponential_decay(learning_rate, decay_step, 5, 0.99999)
 
         with tf.variable_scope(name):
             # We create the placeholders
@@ -197,7 +197,7 @@ class DQNetwork:
 tf.reset_default_graph()
 
 # Instantiate the DQNetwork
-DQNetwork = DQNetwork(state_size, action_size, learning_rate)
+DQNetwork = DQNetwork(state_size, action_size, decay_step, learning_rate)
 
 class Memory():
     def __init__(self, max_size):
@@ -299,86 +299,87 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 
 # Saver will help us to save our model
 saver = tf.train.Saver()
+
 with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
-            # Initialize the variables
+                # Initialize the variables
             sess.run(tf.global_variables_initializer())
 
-            # Initialize the decay rate (that will use to reduce epsilon)
+                # Initialize the decay rate (that will use to reduce epsilon)
             decay_step = 0
 
             for episode in range(total_episodes):
-                # Set step to 0
+                    # Set step to 0
                 step = 0
 
-                # Initialize the rewards of the episode
+                    # Initialize the rewards of the episode
                 episode_rewards = []
 
-                # Make a new episode and observe the first state
+                    # Make a new episode and observe the first state
                 state = env.reset()
 
-                # Remember that stack frame function also call our preprocess function.
+                    # Remember that stack frame function also call our preprocess function.
                 state, stacked_frames = stack_frames(stacked_frames, state, True)
 
                 while step < max_steps:
                     step += 1
 
-                    # Increase decay_step
+                        # Increase decay_step
                     decay_step += 1
 
-                    # Predict the action to take and take it
+                        # Predict the action to take and take it
                     action, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state,
-                                                                 possible_actions)
+                                                                     possible_actions)
 
-                    # Perform the action and get the next_state, reward, and done information
+                        # Perform the action and get the next_state, reward, and done information
                     action_ind = np.argmax(action)
                     next_state, reward, done, _ = env.step(action_ind)
 
                     if episode_render:
                         env.render()
 
-                    # Add the reward to total reward
+                        # Add the reward to total reward
                     episode_rewards.append(reward)
 
-                    # If the game is finished
+                        # If the game is finished
                     if done:
-                        # The episode ends so no next state
+                            # The episode ends so no next state
                         next_state = np.zeros((110, 84), dtype=np.int)
 
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
-                        # Set step = max_steps to end the episode
+                            # Set step = max_steps to end the episode
                         step = max_steps
 
-                        # Get the total reward of the episode
+                            # Get the total reward of the episode
                         total_reward = np.sum(episode_rewards)
 
                         print('Episode: {}'.format(episode),
-                              'Total reward: {}'.format(total_reward),
-                              'Explore P: {:.4f}'.format(explore_probability),
-                              'Training Loss {:.4f}'.format(loss))
-                        #print("Episode is:", episode)
-                        #print("Total rewards is:", total_reward)
+                                'Total reward: {}'.format(total_reward),
+                                'Explore P: {:.4f}'.format(explore_probability),
+                                'Training Loss {:.4f}'.format(loss))
+                            #print("Episode is:", episode)
+                            #print("Total rewards is:", total_reward)
                         rewards_list = []
                         rewards_list.append((episode, total_reward))
 
-                        # Store transition <st,at,rt+1,st+1> in memory D
+                            # Store transition <st,at,rt+1,st+1> in memory D
                         memory.add((state, action, reward, next_state, done))
 
                     else:
-                        # Stack the frame of the next_state
+                            # Stack the frame of the next_state
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
-                        # Add experience to memory
+                            # Add experience to memory
                         memory.add((state, action, reward, next_state, done))
 
-                        # st+1 is now our current state
+                            # st+1 is now our current state
                         state = next_state
 
-                    ### LEARNING PART
-                    # Obtain random mini-batch from memory
+                        ### LEARNING PART
+                        # Obtain random mini-batch from memory
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
                     actions_mb = np.array([each[1] for each in batch])
@@ -388,14 +389,14 @@ with tf.device('/gpu:0'):
 
                     target_Qs_batch = []
 
-                    # Get Q values for next_state
+                        # Get Q values for next_state
                     Qs_next_state = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: next_states_mb})
 
-                    # Set Q_target = r if the episode ends at s+1, otherwise set Q_target = r + gamma*maxQ(s', a')
+                        # Set Q_target = r if the episode ends at s+1, otherwise set Q_target = r + gamma*maxQ(s', a')
                     for i in range(0, len(batch)):
                         terminal = dones_mb[i]
 
-                        # If we are in a terminal state, only equals reward
+                            # If we are in a terminal state, only equals reward
                         if terminal:
                             target_Qs_batch.append(rewards_mb[i])
 
@@ -406,23 +407,23 @@ with tf.device('/gpu:0'):
                     targets_mb = np.array([each for each in target_Qs_batch])
 
                     loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
-                                       feed_dict={DQNetwork.inputs_: states_mb,
-                                                  DQNetwork.target_Q: targets_mb,
-                                                  DQNetwork.actions_: actions_mb})
+                                           feed_dict={DQNetwork.inputs_: states_mb,
+                                                      DQNetwork.target_Q: targets_mb,
+                                                      DQNetwork.actions_: actions_mb})
 
-                    # Write TF Summaries
+                        # Write TF Summaries
                     summary = sess.run(write_op, feed_dict={DQNetwork.inputs_: states_mb,
-                                                            DQNetwork.target_Q: targets_mb,
-                                                            DQNetwork.actions_: actions_mb})
+                                                                DQNetwork.target_Q: targets_mb,
+                                                                DQNetwork.actions_: actions_mb})
                     writer.add_summary(summary, episode)
                     writer.flush()
 
-                # Save model every 5 episodes
+                    # Save model every 5 episodes
                 if episode % 5 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
 
-   
+
 with tf.Session() as sess:
     total_test_rewards = []
     # Load the model
