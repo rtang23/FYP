@@ -17,7 +17,7 @@ Packages that should be installed (all of these should be installed with pip3)
 - scikit-image
 
 
-  2) Acknowledgements
+2) Acknowledgements
 
 - Kautenja for making the gym environment
 
