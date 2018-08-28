@@ -1,6 +1,6 @@
 # Final  Year Project by rtang23
 
-1) Installation and Usage
+  1) Installation and Usage
 
 - Python3 should be used
 
@@ -17,7 +17,8 @@ Packages that should be installed (all of these should be installed with pip3)
 - scikit-image
 
 
-2) Acknowledgements
+  2) Acknowledgements
+
 - Kautenja for making the gym environment
 
 - Thomas Simonini for the Neural Network tutorial which I've modified
