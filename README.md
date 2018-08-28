@@ -2,7 +2,9 @@
 
   1) Installation and Usage
 
-- Python3 should be used
+- Python3 is the only current compatible version with the code
+
+
 
 Packages that should be installed (all of these should be installed with pip3)
 
