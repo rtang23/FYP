@@ -270,7 +270,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
