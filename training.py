@@ -44,7 +44,7 @@ def preprocess_frame(frame):
 stack_size = 2  # We stack 4 frames
 
 # Initialize deque with zero-images one array for each imag
-stacked_frames = deque([np.zeros((110,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+stacked_frames = deque([np.zeros((110,84), dtype=np.int) for i in range(stack_size)], maxlen=2)
 
 
 def stack_frames(stacked_frames, state, is_new_episode):
@@ -53,7 +53,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
     if is_new_episode:
         # Clear our stacked_frames
-        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=2)
 
         # Because we're in a new episode, copy the same frame 4x
         stacked_frames.append(frame)
@@ -74,9 +74,8 @@ def stack_frames(stacked_frames, state, is_new_episode):
     return stacked_state, stacked_frames
 
 ### MODEL HYPERPARAMETERS
-state_size = [110, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
+state_size = [110, 84, 2]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
 action_size = env.action_space.n # 8 possible actions
-learning_rate =  0.00025      # Alpha (aka learning rate)
 
 ### TRAINING HYPERPARAMETERS
 total_episodes = 50000           # Total episodes for training
@@ -97,7 +96,7 @@ pretrain_length = batch_size   # Number of experiences stored in the Memory when
 memory_size = 10000          # Number of experiences the Memory can keep
 
 ### PREPROCESSING HYPERPARAMETERS
-stack_size = 4                # Number of frames stacked
+stack_size = 2                # Number of frames stacked
 
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
@@ -107,7 +106,7 @@ episode_render = False
 
 
 class DQNetwork:
-    def __init__(self, state_size, action_size, learning_rate, name='DQNetwork'):
+    def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
         self.learning_rate_init = 0.00025
@@ -207,7 +206,7 @@ class DQNetwork:
 tf.reset_default_graph()
 
 # Instantiate the DQNetwork
-DQNetwork = DQNetwork(state_size, action_size, learning_rate)
+DQNetwork = DQNetwork(state_size, action_size)
 
 class Memory():
     def __init__(self, max_size):
@@ -358,7 +357,7 @@ with tf.device('/gpu:0'):
                         # If the game is finished
                     if done:
                             # The episode ends so no next state
-                        next_state = np.zeros((256, 224), dtype=np.int)
+                        next_state = np.zeros((110, 84), dtype=np.int)
 
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
