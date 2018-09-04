@@ -36,15 +36,15 @@ def preprocess_frame(frame):
     normalized_frame = cropped_frame / 255.0
 
     # Resize
-    preprocessed_frame = transform.resize(normalized_frame, [256, 224])
+    preprocessed_frame = transform.resize(normalized_frame, [110, 84])
 
     return preprocessed_frame  # 110x84x1 frame
 
 
 stack_size = 2  # We stack 4 frames
 
-# Initialize deque with zero-images one array for each image
-stacked_frames = deque([np.zeros((256, 224), dtype=np.int) for i in range(stack_size)], maxlen=2)
+# Initialize deque with zero-images one array for each imag
+stacked_frames = deque([np.zeros((110,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
 
 def stack_frames(stacked_frames, state, is_new_episode):
@@ -53,13 +53,13 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
     if is_new_episode:
         # Clear our stacked_frames
-        stacked_frames = deque([np.zeros((256, 224), dtype=np.int) for i in range(stack_size)], maxlen=2)
+        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
         # Because we're in a new episode, copy the same frame 4x
         stacked_frames.append(frame)
         stacked_frames.append(frame)
-        #stacked_frames.append(frame)
-        #stacked_frames.append(frame)
+        stacked_frames.append(frame)
+        stacked_frames.append(frame)
 
         # Stack the frames
         stacked_state = np.stack(stacked_frames, axis=2)
@@ -74,12 +74,12 @@ def stack_frames(stacked_frames, state, is_new_episode):
     return stacked_state, stacked_frames
 
 ### MODEL HYPERPARAMETERS
-state_size = [256, 224, 2]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
+state_size = [110, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
 action_size = env.action_space.n # 8 possible actions
 learning_rate =  0.00025      # Alpha (aka learning rate)
 
 ### TRAINING HYPERPARAMETERS
-total_episodes = 1000           # Total episodes for training
+total_episodes = 50000           # Total episodes for training
 max_steps = 50000              # Max possible steps in an episode
 batch_size = 32                # Batch size
 
@@ -97,7 +97,7 @@ pretrain_length = batch_size   # Number of experiences stored in the Memory when
 memory_size = 10000          # Number of experiences the Memory can keep
 
 ### PREPROCESSING HYPERPARAMETERS
-stack_size = 2                 # Number of frames stacked
+stack_size = 4                # Number of frames stacked
 
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
@@ -137,14 +137,15 @@ class DQNetwork:
             """
             # Input is 110x84x4
             self.conv1 = tf.layers.conv2d(inputs=self.inputs_,
-                                          filters=8,
-                                          kernel_size=[7, 7],
-                                          strides=[2, 2],
+                                          filters=32,
+                                          kernel_size=[8, 8],
+                                          strides=[4, 4],
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv1")
-            self.conv1_relu = tf.nn.relu(self.conv1, name="conv1_relu")
-            self.conv1_out = tf.nn.max_pool(self.conv1_relu, ksize=[1,3,3,1], strides=[1,2,2,1], padding='SAME',name='conv1_out')
+
+            self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
+            tf.summary.histogram("conv1_out", self.conv1_out)
 
             """
             Second convnet:
@@ -152,14 +153,15 @@ class DQNetwork:
             ELU
             """
             self.conv2 = tf.layers.conv2d(inputs=self.conv1_out,
-                                          filters=16,
-                                          kernel_size=[5, 5],
+                                          filters=64,
+                                          kernel_size=[4, 4],
                                           strides=[2, 2],
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv2")
-            self.conv2_relu = tf.nn.relu(self.conv2, name="conv2_relu")
-            self.conv2_out = tf.nn.max_pool(self.conv2_relu, ksize=[1,3,3,1],strides=[1,2,2,1], padding='SAME',name='conv2_out' )
+
+            self.conv2_out = tf.nn.relu(self.conv2, name="conv2_out")
+            tf.summary.histogram("conv2_out", self.conv2_out)
 
             """
             Third convnet:
@@ -167,20 +169,21 @@ class DQNetwork:
             ELU
             """
             self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
-                                          filters=32,
+                                          filters=64,
                                           kernel_size=[3, 3],
                                           strides=[2, 2],
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv3")
 
-
             self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
+            tf.summary.histogram("conv3_out", self.conv3_out)
+
 
             self.flatten = tf.contrib.layers.flatten(self.conv3_out)
 
             self.fc = tf.layers.dense(inputs=self.flatten,
-                                      units=256,
+                                      units=512,
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                       name="fc1")
