@@ -307,9 +307,9 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 
         # Take the biggest Q value (= the best action)
         choice = np.argmax(Qs)
-        action = possible_actions[choice]
+        #action = possible_actions[choice]
 
-    return action, explore_probability
+    return choice, explore_probability
 
 
 def test_model(episode, test):
@@ -397,12 +397,12 @@ with tf.device('/cpu:0'):
                         # Increase decay_step
                     decay_step += 1
                         # Predict the action to take and take it
-                    action, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state,
+                    choice, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state,
                                                                      possible_actions)
 
                         # Perform the action and get the next_state, reward, and done information
-                    action_ind = np.argmax(action)
-                    next_state, reward, done, _ = env.step(action_ind)
+
+                    next_state, reward, done, _ = env.step(choice)
 
                     if episode_render:
                         env.render()
