@@ -297,7 +297,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
         # Make a random action (exploration)
         #print("Random action taken")
         choice = random.randint(1, env.action_space.n) - 1
-        action = possible_actions[choice]
+        #action = possible_actions[choice]
 
     else:
         # Get action from Q-network (exploitation)
@@ -319,7 +319,7 @@ def test_model(episode, test):
     state, stacked_frames = stack_frames(stacked_frames, state, True)
     print("****************************************************")
     if test == True:
-        episode = episode/5
+        episode = episode/2
         total_test_rewards = []
     else:
         episode = episode
@@ -486,7 +486,7 @@ with tf.device('/cpu:0'):
                     writer.flush()
 
                     # Save model every 5 episodes
-                if episode % 5 == 0:
+                if episode % 2 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     test_model(episode, test=True)
