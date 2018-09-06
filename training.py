@@ -340,7 +340,7 @@ def test_model(episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a')
-            file.write('Q values are for Test Episode: {0}'.format(episode))
+            file.write('{0}{0} Q values are for Test Episode: {1}'.format(episode))
             with open('Q values', 'a') as file:
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
