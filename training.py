@@ -332,11 +332,14 @@ def test_model(episode, test):
         state = state.reshape((1, *state_size))
         # Get action from Q-network
         # Estimate the Qs values state
+        """"
         if np.sum(state-prev_state) == 0:
             print("State staying the same")
             prev_state=state
         else:
             print("States are different")
+        """
+
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a')
@@ -486,7 +489,7 @@ with tf.device('/cpu:0'):
                     writer.flush()
 
                     # Save model every 5 episodes
-                if episode % 2 == 0:
+                if episode % 5 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     test_model(episode, test=True)
