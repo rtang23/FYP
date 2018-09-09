@@ -25,7 +25,7 @@ env.render() # updates the action within the game or pretty much shows you the g
 possible_actions = np.array(np.identity(env.action_space.n,dtype=int).tolist())
 #print("Possible Actions:", possible_actions)
 
-
+print("This is the newest version")
 def preprocess_frame(frame):
     # Greyscale frame
     gray = rgb2gray(frame)
