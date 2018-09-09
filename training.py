@@ -372,7 +372,7 @@ def test_model(episode, test):
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
