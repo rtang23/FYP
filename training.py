@@ -104,7 +104,7 @@ stack_size = 4                # Number of frames stacked
 training = True
 
 ## TURN THIS TO TRUE IF YOU WANT TO RENDER THE ENVIRONMENT
-episode_render = True
+episode_render = False
 
 
 class DQNetwork:
