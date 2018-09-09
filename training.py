@@ -17,8 +17,8 @@ env = BinarySpaceToDiscreteSpaceEnv(env, RIGHT_ONLY) # have to pick complex move
 
 env.render() # updates the action within the game or pretty much shows you the game is playing
 
-print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
-print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
+#print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
+#print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
 
 # Here we create an hot encoded version of our actions
 # possible_actions = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0]...]
@@ -31,7 +31,7 @@ def preprocess_frame(frame):
 
     # Crop the screen (remove the part below the player)
     # [Up: Down, Left: right]
-    cropped_frame = gray[8:-12, 4:-12]
+    cropped_frame = gray#[8:-12, 4:-12]
 
     # Normalize Pixel Values
     normalized_frame = cropped_frame / 255.0
@@ -125,7 +125,7 @@ class DQNetwork:
             # *state_size means that we take each elements of state_size in tuple hence is like if we wrote
             # [None, 84, 84, 4]
             self.inputs_ = tf.placeholder(tf.float32, [None, *state_size], name="inputs")
-            self.actions_ = tf.placeholder(tf.float32, [None, self.action_size], name="actions_")
+            self.actions_ = tf.placeholder(tf.float32, [None, self.action_size], name="actions_") # TODO: the shape of this should be changed
 
             # Remember that target_Q is the R(s,a) + ymax Qhat(s', a')
             self.target_Q = tf.placeholder(tf.float32, [None], name="target")
@@ -133,7 +133,7 @@ class DQNetwork:
             """
             First convnet:
             CNN
-            ELU
+            RELU
             """
             # Input is 110x84x4
             self.conv1 = tf.layers.conv2d(inputs=self.inputs_,
@@ -194,7 +194,7 @@ class DQNetwork:
                                           activation=None)
 
             # Q is our predicted Q value.
-            self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_))
+            self.Q = tf.reduce_sum(tf.multiply(self.actions_, self.output))
 
             # The loss is the difference between our predicted Q_values and the Q_target
             # Sum(Qtarget - Q)^2
@@ -236,7 +236,6 @@ for i in range(pretrain_length):
 
     # Get the next_state, the rewards, done by taking a random action
     choice = random.randint(1, env.action_space.n) - 1
-
     action = possible_actions[choice]
 
     next_state, reward, done, _ = env.step(choice)
@@ -252,7 +251,7 @@ for i in range(pretrain_length):
         next_state = np.zeros(state.shape)
 
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done))
+        memory.add((state, action, reward, next_state, done)) # TODO
 
         # Start a new episode
         state = env.reset()
@@ -262,13 +261,13 @@ for i in range(pretrain_length):
 
     else:
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done))
+        memory.add((state, action, reward, next_state, done)) # TODO
 
         # Our new state is now the next_state
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('~/tensorboard/dqn/run2')
+writer = tf.summary.FileWriter('tensorboard/dqn/run')
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -297,7 +296,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
         # Make a random action (exploration)
         #print("Random action taken")
         choice = random.randint(1, env.action_space.n) - 1
-        #action = possible_actions[choice]
+
 
     else:
         # Get action from Q-network (exploitation)
@@ -307,7 +306,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 
         # Take the biggest Q value (= the best action)
         choice = np.argmax(Qs)
-        #action = possible_actions[choice]
+
 
     return choice, explore_probability
 
@@ -332,7 +331,7 @@ def test_model(episode, test):
         state = state.reshape((1, *state_size))
         # Get action from Q-network
         # Estimate the Qs values state
-        """"
+        """
         if np.sum(state-prev_state) == 0:
             print("State staying the same")
             prev_state=state
@@ -452,10 +451,14 @@ with tf.device('/cpu:0'):
                         # Obtain random mini-batch from memory
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
-                    actions_mb = np.array([each[1] for each in batch])
+                    actions_mb = np.array([each[1] for each in batch]) # TODO
+                    #actions_mb = np.zeros((32))
+                    #for i in range(batch_size):
+                    #    actions_mb[i] = choice
                     rewards_mb = np.array([each[2] for each in batch])
                     next_states_mb = np.array([each[3] for each in batch], ndmin=3)
                     dones_mb = np.array([each[4] for each in batch])
+
 
                     target_Qs_batch = []
 
@@ -488,8 +491,8 @@ with tf.device('/cpu:0'):
                     writer.add_summary(summary, episode)
                     writer.flush()
 
-                    # Save model every 5 episodes
-                if episode % 5 == 0:
+                    # Save model every 2 episodes
+                if episode % 2 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     test_model(episode, test=True)
