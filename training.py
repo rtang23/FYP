@@ -23,6 +23,7 @@ env.render() # updates the action within the game or pretty much shows you the g
 # Here we create an hot encoded version of our actions
 # possible_actions = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0]...]
 possible_actions = np.array(np.identity(env.action_space.n,dtype=int).tolist())
+#print("Possible Actions:", possible_actions)
 
 
 def preprocess_frame(frame):
@@ -251,7 +252,7 @@ for i in range(pretrain_length):
         next_state = np.zeros(state.shape)
 
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done)) # TODO
+        memory.add((state, choice, reward, next_state, done)) # TODO
 
         # Start a new episode
         state = env.reset()
@@ -261,7 +262,7 @@ for i in range(pretrain_length):
 
     else:
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done)) # TODO
+        memory.add((state, choice, reward, next_state, done)) # TODO
 
         # Our new state is now the next_state
         state = next_state
@@ -435,14 +436,14 @@ with tf.device('/cpu:0'):
                         rewards_list.append((episode, total_reward))
 
                             # Store transition <st,at,rt+1,st+1> in memory D
-                        memory.add((state, action, reward, next_state, done))
+                        memory.add((state, choice, reward, next_state, done))
 
                     else:
                             # Stack the frame of the next_state
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
                             # Add experience to memory
-                        memory.add((state, action, reward, next_state, done))
+                        memory.add((state, choice, reward, next_state, done))
 
                             # st+1 is now our current state
                         state = next_state
@@ -451,10 +452,11 @@ with tf.device('/cpu:0'):
                         # Obtain random mini-batch from memory
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
-                    actions_mb = np.array([each[1] for each in batch]) # TODO
-                    #actions_mb = np.zeros((32))
-                    #for i in range(batch_size):
-                    #    actions_mb[i] = choice
+                    #actions_mb = np.array([each[1] for each in batch]) # TODO
+                    actions_mb = np.zeros((batch_size, env.action_space.n))
+                    for i in range(batch_size):
+                        actions_mb[choice] = choice
+                        #print("action_mb:", actions_mb)
                     rewards_mb = np.array([each[2] for each in batch])
                     next_states_mb = np.array([each[3] for each in batch], ndmin=3)
                     dones_mb = np.array([each[4] for each in batch])
