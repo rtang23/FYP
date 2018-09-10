@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore')   # used to ignore warning messages
 env = gym_super_mario_bros.make('SuperMarioBros-v0') # Creates the environment
 env = BinarySpaceToDiscreteSpaceEnv(env, RIGHT_ONLY) # have to pick complex movement to try different combos
 
-env.render() # updates the action within the game or pretty much shows you the game is playing
+#env.render() # updates the action within the game or pretty much shows you the game is playing
 
 #print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
 #print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
@@ -104,7 +104,7 @@ stack_size = 4                # Number of frames stacked
 training = True
 
 ## TURN THIS TO TRUE IF YOU WANT TO RENDER THE ENVIRONMENT
-episode_render = False
+episode_render = True # this doesn't really work lol
 
 
 class DQNetwork:
@@ -268,7 +268,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run')
+writer = tf.summary.FileWriter('tensorboard/dqn/run5')
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -342,9 +342,9 @@ def test_model(episode, test):
 
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
-            file = open('Q values', 'a')
+            file = open('Q values5', 'a')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values', 'a') as file:
+            with open('Q values5', 'a') as file:
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
             #f = open('Q values.txt', 'w')
@@ -355,7 +355,8 @@ def test_model(episode, test):
 
         # Perform the action and get the next_state, reward, and done information
         next_state, reward, done, _ = env.step(choice)
-        env.render()
+        if test:
+            env.render()
 
         total_rewards += reward
 
@@ -372,7 +373,7 @@ def test_model(episode, test):
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/gpu:0'):
+with tf.device('/cpu:0'):
 
     if training == True:
         with tf.Session() as sess:
@@ -494,7 +495,7 @@ with tf.device('/gpu:0'):
                     writer.flush()
 
                     # Save model every 2 episodes
-                if episode % 2 == 0:
+                if episode % 10 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     test_model(episode, test=True)
