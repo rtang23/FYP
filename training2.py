@@ -364,9 +364,11 @@ def test_model(episode, test):
 
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
-            file = open('Q values3', 'a') # CHANGE
+            file = open('Q values', 'a') # CHANGE
+            file.write('The discount rate is:')
+            file.write('The learning rate is:')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values3', 'a') as file: #CHANGE
+            with open('Q values', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
             #f = open('Q values.txt', 'w')
