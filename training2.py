@@ -28,6 +28,7 @@ possible_actions = np.array(np.identity(env.action_space.n,dtype=int).tolist())
 # minibatch should be one hot
 # make array that i pass is an integer, data type of int for actions_
 # make actions_ float if it's one hot
+
 print("This is the newest version")
 def preprocess_frame(frame):
     # Greyscale frame
@@ -94,7 +95,7 @@ decay_rate = 0.00001           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
-gamma = 0.99                    # Discounting rate
+gamma = 0.9                    # Discounting rate
 
 ### MEMORY HYPERPARAMETERSde a bet wi
 pretrain_length = batch_size   # Number of experiences stored in the Memory when initialized for the first time
@@ -114,14 +115,17 @@ class DQNetwork:
     def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate_init = 0.00025
+        self.learning_rate_init = 0.0001
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
         self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
                                                         self.global_step,
                                                         self.learning_rate_decay_steps,
                                                         self.learning_rate_decay)
+
+        #self.learning_rate = 0.00025
         tf.summary.scalar("learning_rate", self.learning_rate)
 
         with tf.variable_scope(name):
@@ -130,7 +134,7 @@ class DQNetwork:
             # [None, 84, 84, 4]
             self.inputs_ = tf.placeholder(tf.float32, [None, *state_size], name="inputs")
             self.actions_ = tf.placeholder(tf.float32, [None, action_size], name="actions_") # TODO: the shape of this should be changed
-
+            # actions_ = (?, 5)
             # Remember that target_Q is the R(s,a) + ymax Qhat(s', a')
             self.target_Q = tf.placeholder(tf.float32, [None], name="target")
 
@@ -147,7 +151,14 @@ class DQNetwork:
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv1")
-            # print kernel weights of conv1 layer TODO
+
+            #gr = tf.get_default_graph()
+            #conv1_kernel_val = gr.get_tensor_by_name('conv1/kernel:0').eval()
+            #conv1_bias_val = gr.get_tensor_by_name('conv1/bias:0').eval()
+            #print("Conv1 weights:", conv1_kernel_val)
+            #print("Conv1 biases:", conv1_bias_val)
+
+
             self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
             tf.summary.histogram("conv1_out", self.conv1_out)
 
@@ -195,16 +206,20 @@ class DQNetwork:
             self.output = tf.layers.dense(inputs=self.fc,
                                           kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                           units=self.action_size,
-                                          activation=None)
+                                          activation=None) # size is (?, 5)
 
+            print("Output size is:", tf.Tensor.get_shape(self.output))
+            print("Actions_ size is:", tf.Tensor.get_shape(self.actions_))
             # Q is our predicted Q value.
             # make actions a integer and then turn it into one hot encoded to multiply
             #self.Q = tf.gather(self.output, self.actions_)
-            self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_))
+            self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_)) # size of this is (None)
+            print("Q size is:", tf.Tensor.get_shape(self.Q))
 
             # The loss is the difference between our predicted Q_values and the Q_target
             # Sum(Qtarget - Q)^2
-            self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q), name="loss")
+            self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q), name="loss") # size of this is (None)
+            # print("Loss size is:", tf.Tensor.get_shape(self.loss))
             tf.summary.scalar("loss", self.loss)
             self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
@@ -273,7 +288,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run5')
+writer = tf.summary.FileWriter('tensorboard/dqn/run3')
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -349,9 +364,9 @@ def test_model(episode, test):
 
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
-            file = open('Q values5', 'a')
+            file = open('Q values3', 'a')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values5', 'a') as file:
+            with open('Q values3', 'a') as file:
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
             #f = open('Q values.txt', 'w')
@@ -461,6 +476,7 @@ with tf.device('/cpu:0'):
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
                     actions_mb = np.array([each[1] for each in batch]) # TODO
+                    #print("actions_mb", actions_mb)
                     '''
                     actions_mb = np.zeros((batch_size, 1))
                     for i in range(batch_size):
