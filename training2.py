@@ -18,7 +18,7 @@ env = BinarySpaceToDiscreteSpaceEnv(env, RIGHT_ONLY) # have to pick complex move
 #env.render() # updates the action within the game or pretty much shows you the game is playing
 
 #print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
-#print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
+print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
 
 # Here we create an hot encoded version of our actions
 # possible_actions = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0]...]
@@ -42,7 +42,7 @@ def preprocess_frame(frame):
     normalized_frame = cropped_frame / 255.0
 
     # Resize
-    preprocessed_frame = transform.resize(normalized_frame, [110, 84])
+    preprocessed_frame = transform.resize(normalized_frame, [84, 84])
 
     return preprocessed_frame  # 110x84x1 frame
 
@@ -50,7 +50,7 @@ def preprocess_frame(frame):
 stack_size = 4  # We stack 4 frames
 
 # Initialize deque with zero-images one array for each imag
-stacked_frames = deque([np.zeros((110,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
 
 def stack_frames(stacked_frames, state, is_new_episode):
@@ -59,7 +59,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
     if is_new_episode:
         # Clear our stacked_frames
-        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+        stacked_frames = deque([np.zeros((84, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
         # Because we're in a new episode, copy the same frame 4x
         stacked_frames.append(frame)
@@ -80,7 +80,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
     return stacked_state, stacked_frames
 
 ### MODEL HYPERPARAMETERS
-state_size = [110, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
+state_size = [84, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
 action_size = env.action_space.n # 8 possible actions
 
 ### TRAINING HYPERPARAMETERS
@@ -90,7 +90,7 @@ batch_size = 32                # Batch size
 
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
-explore_stop = 0.01            # minimum exploration probability
+explore_stop = 0.1            # minimum exploration probability
 decay_rate = 0.00001           # exponential decay rate for exploration prob
 
 
@@ -115,7 +115,7 @@ class DQNetwork:
     def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate_init = 0.0001
+        self.learning_rate_init = 0.00025
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -288,7 +288,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run3')
+writer = tf.summary.FileWriter('tensorboard/dqn/run3') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -337,7 +337,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 def test_model(episode, test):
     total_rewards = 0
     state = env.reset()
-    stacked_frames = deque([np.zeros((110,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+    stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
     state, stacked_frames = stack_frames(stacked_frames, state, True)
     print("****************************************************")
     if test == True:
@@ -364,9 +364,9 @@ def test_model(episode, test):
 
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
-            file = open('Q values3', 'a')
+            file = open('Q values3', 'a') # CHANGE
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values3', 'a') as file:
+            with open('Q values3', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
             #f = open('Q values.txt', 'w')
@@ -395,7 +395,7 @@ def test_model(episode, test):
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
@@ -439,7 +439,7 @@ with tf.device('/cpu:0'):
                         # If the game is finished
                     if done:
                             # The episode ends so no next state
-                        next_state = np.zeros((110, 84), dtype=np.int)
+                        next_state = np.zeros((84, 84), dtype=np.int)
 
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
