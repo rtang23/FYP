@@ -365,6 +365,7 @@ def test_model(episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a') # CHANGE
+            f.write('\nThe max steps is now 10,000\n')
             file.write('\nThe discount rate is 0.9\n')
             file.write('The initial learning rate is 0.0001\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
