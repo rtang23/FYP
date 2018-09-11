@@ -85,7 +85,7 @@ action_size = env.action_space.n # 8 possible actions
 
 ### TRAINING HYPERPARAMETERS
 total_episodes = 50000         # Total episodes for training
-max_steps = 50000              # Max possible steps in an episode
+max_steps = 10000              # Max possible steps in an episode
 batch_size = 32                # Batch size
 
 # Exploration parameters for epsilon greedy strategy
@@ -95,7 +95,7 @@ decay_rate = 0.00001           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
-gamma = 0.9                    # Discounting rate
+gamma = 0.99                    # Discounting rate
 
 ### MEMORY HYPERPARAMETERSde a bet wi
 pretrain_length = batch_size   # Number of experiences stored in the Memory when initialized for the first time
@@ -115,7 +115,7 @@ class DQNetwork:
     def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate_init = 0.00025
+        self.learning_rate_init = 0.0001
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -288,7 +288,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run3') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/run2') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -365,8 +365,8 @@ def test_model(episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a') # CHANGE
-            file.write('The discount rate is:')
-            file.write('The learning rate is:')
+            file.write('\nThe discount rate is 0.9\n')
+            file.write('The initial learning rate is 0.0001\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
             with open('Q values', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
