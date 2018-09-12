@@ -288,7 +288,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run4') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/run5') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
