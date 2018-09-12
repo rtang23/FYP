@@ -120,12 +120,14 @@ class DQNetwork:
         self.learning_rate_decay = 0.99999
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
 
+        '''
         self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
                                                         self.global_step,
                                                         self.learning_rate_decay_steps,
                                                         self.learning_rate_decay)
+        '''
 
-        #self.learning_rate = 0.00025
+        self.learning_rate = 0.00025
         tf.summary.scalar("learning_rate", self.learning_rate)
 
         with tf.variable_scope(name):
@@ -186,7 +188,7 @@ class DQNetwork:
             self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
                                           filters=64,
                                           kernel_size=[3, 3],
-                                          strides=[2, 2],
+                                          strides=[1, 1],
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv3")
@@ -221,7 +223,7 @@ class DQNetwork:
             self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q), name="loss") # size of this is (None)
             # print("Loss size is:", tf.Tensor.get_shape(self.loss))
             tf.summary.scalar("loss", self.loss)
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, rho=0.95, epsilon=0.01).minimize(self.loss, global_step=self.global_step)
 
 
 # Reset the graph
@@ -365,9 +367,10 @@ def test_model(episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a') # CHANGE
+            file.write('New neural net structure with RMSProp Optimizer')
             file.write('\nThe max steps is now 10,000\n')
             file.write('\nThe discount rate is 0.9\n')
-            file.write('The initial learning rate is 0.000055\n')
+            file.write('The initial learning rate is 0.00025\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
             with open('Q values', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
