@@ -2,49 +2,55 @@ import tensorflow as tf             # Deep Learning library
 import numpy as np                  # Handle matrices
 import random                       # used to see if we explore or exploit
 import warnings                     # This ignore all the warning messages that are normally printed during the training because of skiimage
+import os
 from collections import deque       # Ordered collection with ends
 from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
 import gym_super_mario_bros         # import Kautenja's gym environment
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+from gym_super_mario_bros.actions import RIGHT_ONLY
 from skimage import transform       # Help us to preprocess the frames
 from skimage.color import rgb2gray  # Help us to gray our frames
 warnings.filterwarnings('ignore')   # used to ignore warning messages
 
 # Create our environment
 env = gym_super_mario_bros.make('SuperMarioBros-v0') # Creates the environment
-env = BinarySpaceToDiscreteSpaceEnv(env, COMPLEX_MOVEMENT) # have to pick complex movement to try different combos
+env = BinarySpaceToDiscreteSpaceEnv(env, RIGHT_ONLY) # have to pick complex movement to try different combos
 
-env.render() # updates the action within the game or pretty much shows you the game is playing
+#env.render() # updates the action within the game or pretty much shows you the game is playing
 
-print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
+#print("The size of our frame is: ", env.observation_space) # was originally a test to see what this was outputting.
 print("The action size is : ", env.action_space.n)  # the amount of actions we can take in the game
 
 # Here we create an hot encoded version of our actions
 # possible_actions = [[1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0, 0, 0]...]
 possible_actions = np.array(np.identity(env.action_space.n,dtype=int).tolist())
+#print("Possible Actions:", possible_actions)
+# storing turns it as a tensor float but when i use it, it is expecting an integer
+# minibatch should be one hot
+# make array that i pass is an integer, data type of int for actions_
+# make actions_ float if it's one hot
 
-
+print("This is the newest version")
 def preprocess_frame(frame):
     # Greyscale frame
     gray = rgb2gray(frame)
 
     # Crop the screen (remove the part below the player)
     # [Up: Down, Left: right]
-    cropped_frame = gray[8:-12, 4:-12]
+    cropped_frame = gray#[8:-12, 4:-12]
 
     # Normalize Pixel Values
     normalized_frame = cropped_frame / 255.0
 
     # Resize
-    preprocessed_frame = transform.resize(normalized_frame, [110, 84])
+    preprocessed_frame = transform.resize(normalized_frame, [84, 84])
 
     return preprocessed_frame  # 110x84x1 frame
 
 
 stack_size = 4  # We stack 4 frames
 
-# Initialize deque with zero-images one array for each image
-stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+# Initialize deque with zero-images one array for each imag
+stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
 
 def stack_frames(stacked_frames, state, is_new_episode):
@@ -53,7 +59,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
     if is_new_episode:
         # Clear our stacked_frames
-        stacked_frames = deque([np.zeros((110, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+        stacked_frames = deque([np.zeros((84, 84), dtype=np.int) for i in range(stack_size)], maxlen=4)
 
         # Because we're in a new episode, copy the same frame 4x
         stacked_frames.append(frame)
@@ -74,59 +80,68 @@ def stack_frames(stacked_frames, state, is_new_episode):
     return stacked_state, stacked_frames
 
 ### MODEL HYPERPARAMETERS
-state_size = [110, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
+state_size = [84, 84, 4]      # Our input is a stack of 4 frames hence 110x84x4 (Width, height, channels)
 action_size = env.action_space.n # 8 possible actions
-learning_rate =  0.00025      # Alpha (aka learning rate)
 
 ### TRAINING HYPERPARAMETERS
-total_episodes = 100            # Total episodes for training
-max_steps = 50000              # Max possible steps in an episode
-batch_size = 64                # Batch size
+total_episodes = 50000         # Total episodes for training
+max_steps = 10000              # Max possible steps in an episode
+batch_size = 32                # Batch size
 
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
-explore_stop = 0.01            # minimum exploration probability
+explore_stop = 0.1            # minimum exploration probability
 decay_rate = 0.00001           # exponential decay rate for exploration prob
-decay_step = 0
+
 
 # Q learning hyperparameters
-gamma = 0.9                    # Discounting rate
+gamma = 0.99                    # Discounting rate
 
 ### MEMORY HYPERPARAMETERSde a bet wi
 pretrain_length = batch_size   # Number of experiences stored in the Memory when initialized for the first time
-memory_size = 1000000          # Number of experiences the Memory can keep
+memory_size = 10000          # Number of experiences the Memory can keep
 
 ### PREPROCESSING HYPERPARAMETERS
-stack_size = 4                 # Number of frames stacked
+stack_size = 4                # Number of frames stacked
 
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
 
 ## TURN THIS TO TRUE IF YOU WANT TO RENDER THE ENVIRONMENT
-episode_render = False
+episode_render = True # this doesn't really work lol
 
 
 class DQNetwork:
-    def __init__(self, state_size, action_size, decay_step, learning_rate, name='DQNetwork'):
+    def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        self.decay_step = decay_step
-        self.learning_rate = tf.train.exponential_decay(learning_rate, decay_step, 5, 0.99999)
+        self.learning_rate_init = 0.000055
+        self.learning_rate_decay_steps = 5
+        self.learning_rate_decay = 0.99999
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
+        self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
+                                                        self.global_step,
+                                                        self.learning_rate_decay_steps,
+                                                        self.learning_rate_decay)
+
+        #self.learning_rate = 0.00025
+        tf.summary.scalar("learning_rate", self.learning_rate)
 
         with tf.variable_scope(name):
             # We create the placeholders
             # *state_size means that we take each elements of state_size in tuple hence is like if we wrote
             # [None, 84, 84, 4]
             self.inputs_ = tf.placeholder(tf.float32, [None, *state_size], name="inputs")
-            self.actions_ = tf.placeholder(tf.float32, [None, self.action_size], name="actions_")
-
+            self.actions_ = tf.placeholder(tf.float32, [None, action_size], name="actions_") # TODO: the shape of this should be changed
+            # actions_ = (?, 5)
             # Remember that target_Q is the R(s,a) + ymax Qhat(s', a')
             self.target_Q = tf.placeholder(tf.float32, [None], name="target")
 
             """
             First convnet:
             CNN
-            ELU
+            RELU
             """
             # Input is 110x84x4
             self.conv1 = tf.layers.conv2d(inputs=self.inputs_,
@@ -137,7 +152,15 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv1")
 
-            self.conv1_out = tf.nn.elu(self.conv1, name="conv1_out")
+            #gr = tf.get_default_graph()
+            #conv1_kernel_val = gr.get_tensor_by_name('conv1/kernel:0').eval()
+            #conv1_bias_val = gr.get_tensor_by_name('conv1/bias:0').eval()
+            #print("Conv1 weights:", conv1_kernel_val)
+            #print("Conv1 biases:", conv1_bias_val)
+
+
+            self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
+            tf.summary.histogram("conv1_out", self.conv1_out)
 
             """
             Second convnet:
@@ -152,7 +175,8 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv2")
 
-            self.conv2_out = tf.nn.elu(self.conv2, name="conv2_out")
+            self.conv2_out = tf.nn.relu(self.conv2, name="conv2_out")
+            tf.summary.histogram("conv2_out", self.conv2_out)
 
             """
             Third convnet:
@@ -167,37 +191,45 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv3")
 
-            self.conv3_out = tf.nn.elu(self.conv3, name="conv3_out")
+            self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
+            tf.summary.histogram("conv3_out", self.conv3_out)
+
 
             self.flatten = tf.contrib.layers.flatten(self.conv3_out)
 
             self.fc = tf.layers.dense(inputs=self.flatten,
                                       units=512,
-                                      activation=tf.nn.elu,
+                                      activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                       name="fc1")
 
             self.output = tf.layers.dense(inputs=self.fc,
                                           kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                           units=self.action_size,
-                                          activation=None)
+                                          activation=None) # size is (?, 5)
 
+            print("Output size is:", tf.Tensor.get_shape(self.output))
+            print("Actions_ size is:", tf.Tensor.get_shape(self.actions_))
             # Q is our predicted Q value.
-            self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_))
+            # make actions a integer and then turn it into one hot encoded to multiply
+            #self.Q = tf.gather(self.output, self.actions_)
+            self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_)) # size of this is (None)
+            print("Q size is:", tf.Tensor.get_shape(self.Q))
 
             # The loss is the difference between our predicted Q_values and the Q_target
             # Sum(Qtarget - Q)^2
-            self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q))
-
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
-
+            self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q), name="loss") # size of this is (None)
+            # print("Loss size is:", tf.Tensor.get_shape(self.loss))
+            tf.summary.scalar("loss", self.loss)
+            self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
 
 # Reset the graph
 tf.reset_default_graph()
 
 # Instantiate the DQNetwork
-DQNetwork = DQNetwork(state_size, action_size, decay_step, learning_rate)
+DQNetwork = DQNetwork(state_size, action_size)
+
 
 class Memory():
     def __init__(self, max_size):
@@ -214,7 +246,6 @@ class Memory():
 
         return [self.buffer[i] for i in index]
 
-
 # Instantiate memory
 memory = Memory(max_size=memory_size)
 for i in range(pretrain_length):
@@ -225,10 +256,10 @@ for i in range(pretrain_length):
         state, stacked_frames = stack_frames(stacked_frames, state, True)
 
     # Get the next_state, the rewards, done by taking a random action
-    choice = random.randint(1, len(possible_actions)) - 1
+    choice = random.randint(1, env.action_space.n) - 1
     action = possible_actions[choice]
-    action_ind = np.argmax(action)
-    next_state, reward, done, _ = env.step(action_ind)
+
+    next_state, reward, done, _ = env.step(choice)
 
     # env.render()
 
@@ -241,7 +272,7 @@ for i in range(pretrain_length):
         next_state = np.zeros(state.shape)
 
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done))
+        memory.add((state, action, reward, next_state, done)) # TODO
 
         # Start a new episode
         state = env.reset()
@@ -251,14 +282,13 @@ for i in range(pretrain_length):
 
     else:
         # Add experience to memory
-        memory.add((state, action, reward, next_state, done))
+        memory.add((state, action, reward, next_state, done)) # TODO
 
         # Our new state is now the next_state
         state = next_state
 
-
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter("~/PycharmProjects/untitled1/testfolder")
+writer = tf.summary.FileWriter('tensorboard/dqn/run4') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -280,21 +310,89 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     # Here we'll use an improved version of our epsilon greedy strategy used in Q-learning notebook
     explore_probability = explore_stop + (explore_start - explore_stop) * np.exp(-decay_rate * decay_step)
 
+    #Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state.reshape((1, *state.shape))})
+    # print("Q values are:", Qs)
+
     if (explore_probability > exp_exp_tradeoff):
         # Make a random action (exploration)
-        choice = random.randint(1, len(possible_actions)) - 1
+        #print("Random action taken")
+        choice = random.randint(1, env.action_space.n) - 1
         action = possible_actions[choice]
+
 
     else:
         # Get action from Q-network (exploitation)
         # Estimate the Qs values state
+        #print("Taking the best action")
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state.reshape((1, *state.shape))})
 
         # Take the biggest Q value (= the best action)
         choice = np.argmax(Qs)
         action = possible_actions[choice]
 
+
     return action, explore_probability
+
+
+def test_model(episode, test):
+    total_rewards = 0
+    state = env.reset()
+    stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
+    state, stacked_frames = stack_frames(stacked_frames, state, True)
+    print("****************************************************")
+    if test == True:
+        episode = episode/2
+        total_test_rewards = []
+    else:
+        episode = episode
+    print("TEST EPISODE", episode)
+
+    prev_state = state.reshape((1, *state_size))
+
+    while True:
+        # Reshape the state
+        state = state.reshape((1, *state_size))
+        # Get action from Q-network
+        # Estimate the Qs values state
+        """
+        if np.sum(state-prev_state) == 0:
+            print("State staying the same")
+            prev_state=state
+        else:
+            print("States are different")
+        """
+
+        Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
+        if test:
+            file = open('Q values', 'a') # CHANGE
+            file.write('\nThe max steps is now 10,000\n')
+            file.write('\nThe discount rate is 0.9\n')
+            file.write('The initial learning rate is 0.000055\n')
+            file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
+            with open('Q values', 'a') as file: #CHANGE
+                file.write('{0}{0} {1}'.format(os.linesep, Qs))
+            #print('Q values are', Qs)
+            #f = open('Q values.txt', 'w')
+            #f.write('{}'.format(Qs))
+
+        # Take the biggest Q value (= the best action)
+        choice = np.argmax(Qs)
+
+        # Perform the action and get the next_state, reward, and done information
+        next_state, reward, done, _ = env.step(choice)
+        if test:
+            env.render()
+
+        total_rewards += reward
+
+        if done:
+            print ("Score", total_rewards)
+            total_test_rewards.append(total_rewards)
+            break
+
+        next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+        state = next_state
+
 
 
 # Saver will help us to save our model
@@ -309,7 +407,6 @@ with tf.device('/gpu:0'):
 
                 # Initialize the decay rate (that will use to reduce epsilon)
             decay_step = 0
-
             for episode in range(total_episodes):
                     # Set step to 0
                 step = 0
@@ -328,14 +425,13 @@ with tf.device('/gpu:0'):
 
                         # Increase decay_step
                     decay_step += 1
-
                         # Predict the action to take and take it
                     action, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state,
                                                                      possible_actions)
 
                         # Perform the action and get the next_state, reward, and done information
-                    action_ind = np.argmax(action)
-                    next_state, reward, done, _ = env.step(action_ind)
+                    choice = np.argmax(action)
+                    next_state, reward, done, _ = env.step(choice)
 
                     if episode_render:
                         env.render()
@@ -346,7 +442,7 @@ with tf.device('/gpu:0'):
                         # If the game is finished
                     if done:
                             # The episode ends so no next state
-                        next_state = np.zeros((110, 84), dtype=np.int)
+                        next_state = np.zeros((84, 84), dtype=np.int)
 
                         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
@@ -382,10 +478,18 @@ with tf.device('/gpu:0'):
                         # Obtain random mini-batch from memory
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
-                    actions_mb = np.array([each[1] for each in batch])
+                    actions_mb = np.array([each[1] for each in batch]) # TODO
+                    #print("actions_mb", actions_mb)
+                    '''
+                    actions_mb = np.zeros((batch_size, 1))
+                    for i in range(batch_size):
+                        actions_mb[(i,0)] = choice
+                        #print("action_mb:", actions_mb)
+                    '''
                     rewards_mb = np.array([each[2] for each in batch])
                     next_states_mb = np.array([each[3] for each in batch], ndmin=3)
                     dones_mb = np.array([each[4] for each in batch])
+
 
                     target_Qs_batch = []
 
@@ -409,7 +513,7 @@ with tf.device('/gpu:0'):
                     loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
                                            feed_dict={DQNetwork.inputs_: states_mb,
                                                       DQNetwork.target_Q: targets_mb,
-                                                      DQNetwork.actions_: actions_mb})
+                                                      DQNetwork.actions_: actions_mb})#actions_ expects one hot but actions_mb is integer index
 
                         # Write TF Summaries
                     summary = sess.run(write_op, feed_dict={DQNetwork.inputs_: states_mb,
@@ -418,10 +522,11 @@ with tf.device('/gpu:0'):
                     writer.add_summary(summary, episode)
                     writer.flush()
 
-                    # Save model every 5 episodes
-                if episode % 5 == 0:
+                    # Save model every 2 episodes
+                if episode % 2 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
+                    test_model(episode, test=True)
 
 
 with tf.Session() as sess:
@@ -431,38 +536,39 @@ with tf.Session() as sess:
     print("Model loaded")
 
     for episode in range(1):
-        total_rewards = 0
-
-        state = env.reset()
-        state, stacked_frames = stack_frames(stacked_frames, state, True)
-
-        print("****************************************************")
-        print("EPISODE ", episode)
-
-        while True:
-            # Reshape the state
-            state = state.reshape((1, *state_size))
-            # Get action from Q-network
-            # Estimate the Qs values state
-            Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
-
-            # Take the biggest Q value (= the best action)
-            choice = np.argmax(Qs)
-            action = possible_actions[choice]
-            action_ind = np.argmax(action)
-            # Perform the action and get the next_state, reward, and done information
-            next_state, reward, done, _ = env.step(action_ind)
-            env.render()
-
-            total_rewards += reward
-
-            if done:
-                print ("Score", total_rewards)
-                total_test_rewards.append(total_rewards)
-                break
-
-            next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-            state = next_state
+        test_model(episode,test=False)
+        # total_rewards = 0
+        #
+        # state = env.reset()
+        # state, stacked_frames = stack_frames(stacked_frames, state, True)
+        #
+        # print("****************************************************")
+        # print("EPISODE ", episode)
+        #
+        # while True:
+        #     # Reshape the state
+        #     state = state.reshape((1, *state_size))
+        #     # Get action from Q-network
+        #     # Estimate the Qs values state
+        #     Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
+        #
+        #     # Take the biggest Q value (= the best action)
+        #     choice = np.argmax(Qs)
+        #
+        #     # Perform the action and get the next_state, reward, and done information
+        #     next_state, reward, done, _ = env.step(choice)
+        #     env.render()
+        #
+        #     total_rewards += reward
+        #
+        #     if done:
+        #         print ("Score", total_rewards)
+        #         total_test_rewards.append(total_rewards)
+        #         break
+        #
+        #     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+        #     state = next_state
 
     env.close()
+
 
