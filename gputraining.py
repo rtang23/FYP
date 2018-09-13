@@ -335,7 +335,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     return action, explore_probability
 
 
-def test_model(episode, test):
+def test_model(self, episode, test):
     total_rewards = 0
     state = env.reset()
     stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
@@ -387,11 +387,11 @@ def test_model(episode, test):
             env.render()
 
         total_rewards += reward
-        cumu_rewards += reward
+        self.cumu_rewards += reward
 
         if done:
             print ("Score", total_rewards)
-            print("Average reward", cumu_rewards/10)
+            print("Average reward", self.cumu_rewards/10)
             total_test_rewards.append(total_rewards)
             break
 
