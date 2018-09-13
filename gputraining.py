@@ -341,53 +341,56 @@ def test_model(episode, test):
     stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
     state, stacked_frames = stack_frames(stacked_frames, state, True)
     print("****************************************************")
-    if test == True:
-        episode = episode/2
-        total_test_rewards = []
-    else:
-        episode = episode
-    print("TEST EPISODE", episode)
-
-    prev_state = state.reshape((1, *state_size))
-
-    while True:
-        # Reshape the state
-        state = state.reshape((1, *state_size))
-        # Get action from Q-network
-        # Estimate the Qs values state
-        """
-        if np.sum(state-prev_state) == 0:
-            print("State staying the same")
-            prev_state=state
+    i = 0
+    for i in range (9):
+        if test == True:
+            episode = episode/2
+            total_test_rewards = []
         else:
-            print("States are different")
-        """
+            episode = episode
+        print("TEST EPISODE", episode)
 
-        Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
-        if test:
-            file = open('Q values', 'a') # CHANGE
-            file.write('\nThe max steps is now 10,000\n')
-            file.write('\nGamma is 0.99\n')
-            file.write('The initial learning rate is 0.00005\n')
-            file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values', 'a') as file: #CHANGE
-                file.write('{0}{0} {1}'.format(os.linesep, Qs))
-            #print('Q values are', Qs)
-            #f = open('Q values.txt', 'w')
-            #f.write('{}'.format(Qs))
+        prev_state = state.reshape((1, *state_size))
 
-        # Take the biggest Q value (= the best action)
-        choice = np.argmax(Qs)
+        while True:
+            # Reshape the state
+            state = state.reshape((1, *state_size))
+            # Get action from Q-network
+            # Estimate the Qs values state
+            """
+            if np.sum(state-prev_state) == 0:
+                print("State staying the same")
+                prev_state=state
+            else:
+                print("States are different")
+            """
 
-        # Perform the action and get the next_state, reward, and done information
-        next_state, reward, done, _ = env.step(choice)
-        if test:
-            env.render()
+            Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
+            if test:
+                file = open('Q values', 'a') # CHANGE
+                file.write('\nThe max steps is now 10,000\n')
+                file.write('\nGamma is 0.99\n')
+                file.write('The initial learning rate is 0.00005\n')
+                file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
+                with open('Q values', 'a') as file: #CHANGE
+                    file.write('{0}{0} {1}'.format(os.linesep, Qs))
+                #print('Q values are', Qs)
+                #f = open('Q values.txt', 'w')
+                #f.write('{}'.format(Qs))
 
-        total_rewards += reward
+            # Take the biggest Q value (= the best action)
+            choice = np.argmax(Qs)
+
+            # Perform the action and get the next_state, reward, and done information
+            next_state, reward, done, _ = env.step(choice)
+            if test:
+                env.render()
+
+            total_rewards += reward
 
         if done:
             print ("Score", total_rewards)
+            print("Average reward", total_rewards/10)
             total_test_rewards.append(total_rewards)
             break
 
