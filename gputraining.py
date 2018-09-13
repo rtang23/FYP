@@ -294,7 +294,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run2') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/run3') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -353,7 +353,7 @@ def test_model(episode, test):
 
 
     if test == True:
-        episode = episode/2
+        episode = episode/5
         total_test_rewards = []
     else:
         episode = episode
@@ -413,7 +413,7 @@ def test_model(episode, test):
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
