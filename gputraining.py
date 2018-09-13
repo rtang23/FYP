@@ -387,10 +387,11 @@ def test_model(episode, test):
             env.render()
 
         total_rewards += reward
+        cumu_rewards += reward
 
         if done:
             print ("Score", total_rewards)
-            print("Average reward", total_rewards/10)
+            print("Average reward", cumu_rewards/10)
             total_test_rewards.append(total_rewards)
             break
 
@@ -532,7 +533,7 @@ with tf.device('/gpu:0'):
                     print("Model Saved")
                     for i in range(0,10):
                         test_model(episode, test=True)
-                    print("Average reward", total_test_rewards/10)
+
 
 
 with tf.Session() as sess:
