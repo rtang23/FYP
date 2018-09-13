@@ -388,7 +388,9 @@ def test_model(episode, test):
 
         total_rewards += reward
         cumu_rewards = np.zeros((1,1))
+        print("Cumu_rewards is", cumu_rewards)
         cumu_rewards += reward
+        print("Cumu_rewards after an update is", cumu_rewards)
 
         if done:
             print ("Score", total_rewards)
