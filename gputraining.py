@@ -531,7 +531,7 @@ with tf.device('/gpu:0'):
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     cumu_rewards =0
-                    for i in range(0,10):
+                    for i in range(1,10):
                         test_model(i, cumu_rewards, episode=episode, test=True)
 
 
