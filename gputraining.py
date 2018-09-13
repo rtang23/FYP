@@ -91,7 +91,7 @@ batch_size = 32                # Batch size
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
 explore_stop = 0.1            # minimum exploration probability
-decay_rate = 0.00001           # exponential decay rate for exploration prob
+decay_rate = 0.000005           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
@@ -115,18 +115,23 @@ class DQNetwork:
     def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
+        '''
         self.learning_rate_init = 0.00005
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
+        '''
+
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
 	
+        '''
+        self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
+                                                       self.global_step,
+                                                        self.learning_rate_decay_steps,
+                                                        self.learning_rate_decay, staircase=True)   
+        '''
 
-        #self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
-        #                                               self.global_step,
-        #                                                self.learning_rate_decay_steps,
-        #                                                self.learning_rate_decay, staircase=True)
-
-        self.learning_rate = 0.00002
+        self.learning_rate = 0.00001
         tf.summary.scalar("learning_rate", self.learning_rate)
 
         with tf.variable_scope(name):
@@ -307,6 +312,9 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     # Choose action a from state s using epsilon greedy.
     ## First we randomize a number
     exp_exp_tradeoff = np.random.rand()
+    best_count = 0
+    random_count = 0
+    total_count = 0
 
     # Here we'll use an improved version of our epsilon greedy strategy used in Q-learning notebook
     explore_probability = explore_stop + (explore_start - explore_stop) * np.exp(-decay_rate * decay_step)
@@ -316,7 +324,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
 
     if (explore_probability > exp_exp_tradeoff):
         # Make a random action (exploration)
-        #print("Random action taken")
+        #random_count += 1
         choice = random.randint(1, env.action_space.n) - 1
         action = possible_actions[choice]
 
@@ -326,16 +334,17 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
         # Estimate the Qs values state
         #print("Taking the best action")
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state.reshape((1, *state.shape))})
+        #best_count += 1
 
         # Take the biggest Q value (= the best action)
         choice = np.argmax(Qs)
         action = possible_actions[choice]
 
 
-    return action, explore_probability
+    return action, explore_probability #, random_count, best_count
 
 
-def test_model(count, cumu_rewards, episode, test):
+def test_model(episode, test):
     total_rewards = 0
     state = env.reset()
     stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
@@ -368,9 +377,9 @@ def test_model(count, cumu_rewards, episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a') # CHANGE
-            file.write('\nThe max steps is now 10,000\n')
+            file.write('\nThe max steps is now 10,000')
             file.write('\nGamma is 0.99\n')
-            file.write('The initial learning rate is 0.00005\n')
+            file.write('The initial learning rate is 0.00001\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
             with open('Q values', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
@@ -385,13 +394,11 @@ def test_model(count, cumu_rewards, episode, test):
         next_state, reward, done, _ = env.step(choice)
         if test:
             env.render()
-        cumu_rewards += reward
-        print("Cumu_rewards", cumu_rewards)
+
         total_rewards += reward
 
         if done:
             print ("Score", total_rewards)
-            print("Average reward", cumu_rewards/count)
             total_test_rewards.append(total_rewards)
             break
 
@@ -401,10 +408,12 @@ def test_model(count, cumu_rewards, episode, test):
 
 
 
+
+
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/gpu:0'):
+with tf.device('/cpu:0'):
 
     if training == True:
         with tf.Session() as sess:
@@ -413,6 +422,11 @@ with tf.device('/gpu:0'):
 
                 # Initialize the decay rate (that will use to reduce epsilon)
             decay_step = 0
+
+            #count_rand = 0
+            #count_best = 0
+            #count_total = 0
+
             for episode in range(total_episodes):
                     # Set step to 0
                 step = 0
@@ -434,6 +448,14 @@ with tf.device('/gpu:0'):
                         # Predict the action to take and take it
                     action, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state,
                                                                      possible_actions)
+                    '''
+                    if random_count:
+                        count_rand += 1
+                        count_total += 1
+                    elif best_count:
+                        count_best += 1
+                        count_total +=1
+                    '''
 
                         # Perform the action and get the next_state, reward, and done information
                     choice = np.argmax(action)
@@ -462,8 +484,10 @@ with tf.device('/gpu:0'):
                                 'Total reward: {}'.format(total_reward),
                                 'Explore P: {:.4f}'.format(explore_probability),
                                 'Training Loss {:.4f}'.format(loss))
-                            #print("Episode is:", episode)
-                            #print("Total rewards is:", total_reward)
+
+                        #print("Random action taken: {0:.2f}%".format(100 * count_rand/count_total))
+                        #print("Best action taken: {0:.2f}%".format(100 * count_best /count_total))
+
                         rewards_list = []
                         rewards_list.append((episode, total_reward))
 
@@ -484,14 +508,7 @@ with tf.device('/gpu:0'):
                         # Obtain random mini-batch from memory
                     batch = memory.sample(batch_size)
                     states_mb = np.array([each[0] for each in batch], ndmin=3)
-                    actions_mb = np.array([each[1] for each in batch]) # TODO
-                    #print("actions_mb", actions_mb)
-                    '''
-                    actions_mb = np.zeros((batch_size, 1))
-                    for i in range(batch_size):
-                        actions_mb[(i,0)] = choice
-                        #print("action_mb:", actions_mb)
-                    '''
+                    actions_mb = np.array([each[1] for each in batch])
                     rewards_mb = np.array([each[2] for each in batch])
                     next_states_mb = np.array([each[3] for each in batch], ndmin=3)
                     dones_mb = np.array([each[4] for each in batch])
@@ -519,8 +536,7 @@ with tf.device('/gpu:0'):
                     loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
                                            feed_dict={DQNetwork.inputs_: states_mb,
                                                       DQNetwork.target_Q: targets_mb,
-                                                      DQNetwork.actions_: actions_mb})#actions_ expects one hot but actions_mb is integer index
-
+                                                      DQNetwork.actions_: actions_mb})
                         # Write TF Summaries
                     summary = sess.run(write_op, feed_dict={DQNetwork.inputs_: states_mb,
                                                                 DQNetwork.target_Q: targets_mb,
@@ -528,13 +544,12 @@ with tf.device('/gpu:0'):
                     writer.add_summary(summary, episode)
                     writer.flush()
 
-                    # Save model every 2 episodes
-                    cumu_rewards = 0
-                if episode % 20 == 0:
+                    # Save model every 5 episodes
+                if episode % 5 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
-                    for i in range(1,10):
-                        test_model(i, cumu_rewards, episode=episode, test=True)
+                    test_model(episode,test=True)
+
 
 
 
@@ -546,37 +561,6 @@ with tf.Session() as sess:
 
     for episode in range(1):
         test_model(episode,test=False)
-        # total_rewards = 0
-        #
-        # state = env.reset()
-        # state, stacked_frames = stack_frames(stacked_frames, state, True)
-        #
-        # print("****************************************************")
-        # print("EPISODE ", episode)
-        #
-        # while True:
-        #     # Reshape the state
-        #     state = state.reshape((1, *state_size))
-        #     # Get action from Q-network
-        #     # Estimate the Qs values state
-        #     Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
-        #
-        #     # Take the biggest Q value (= the best action)
-        #     choice = np.argmax(Qs)
-        #
-        #     # Perform the action and get the next_state, reward, and done information
-        #     next_state, reward, done, _ = env.step(choice)
-        #     env.render()
-        #
-        #     total_rewards += reward
-        #
-        #     if done:
-        #         print ("Score", total_rewards)
-        #         total_test_rewards.append(total_rewards)
-        #         break
-        #
-        #     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-        #     state = next_state
 
     env.close()
 
