@@ -532,7 +532,7 @@ with tf.device('/gpu:0'):
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     for i in range(0,10):
-                        test_model(episode, test=True)
+                        test_model(episode=episode, test=True)
 
 
 
