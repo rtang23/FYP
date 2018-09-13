@@ -335,7 +335,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     return action, explore_probability
 
 
-def test_model(episode, test):
+def test_model(cumu_rewards, episode, test):
     total_rewards = 0
     state = env.reset()
     stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
@@ -385,12 +385,8 @@ def test_model(episode, test):
         next_state, reward, done, _ = env.step(choice)
         if test:
             env.render()
-
-        total_rewards += reward
-        cumu_rewards = []
-        print("Cumu_rewards is", cumu_rewards)
         cumu_rewards += reward
-        print("Cumu_rewards after an update is", cumu_rewards)
+        total_rewards += reward
 
         if done:
             print ("Score", total_rewards)
@@ -535,7 +531,8 @@ with tf.device('/gpu:0'):
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
                     for i in range(0,10):
-                        test_model(episode=episode, test=True)
+                        cumu_rewards = 0
+                        test_model(cumu_rewards, episode=episode, test=True)
 
 
 
