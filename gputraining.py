@@ -386,6 +386,7 @@ def test_model(count, cumu_rewards, episode, test):
         if test:
             env.render()
         cumu_rewards += reward
+        print("Cumu_rewards", cumu_rewards)
         total_rewards += reward
 
         if done:
