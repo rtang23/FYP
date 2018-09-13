@@ -335,7 +335,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     return action, explore_probability
 
 
-def test_model(cumu_rewards, episode, test):
+def test_model(count, cumu_rewards, episode, test):
     total_rewards = 0
     state = env.reset()
     stacked_frames = deque([np.zeros((84,84), dtype=np.int) for i in range(stack_size)], maxlen=4)
@@ -390,7 +390,7 @@ def test_model(cumu_rewards, episode, test):
 
         if done:
             print ("Score", total_rewards)
-            print("Average reward", cumu_rewards/10)
+            print("Average reward", cumu_rewards/count)
             total_test_rewards.append(total_rewards)
             break
 
@@ -532,7 +532,7 @@ with tf.device('/gpu:0'):
                     print("Model Saved")
                     cumu_rewards =0
                     for i in range(0,10):
-                        test_model(cumu_rewards, episode=episode, test=True)
+                        test_model(i, cumu_rewards, episode=episode, test=True)
 
 
 
