@@ -530,8 +530,8 @@ with tf.device('/gpu:0'):
                 if episode % 20 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
+                    cumu_rewards =0
                     for i in range(0,10):
-                        cumu_rewards = 0
                         test_model(cumu_rewards, episode=episode, test=True)
 
 
