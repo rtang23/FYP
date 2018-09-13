@@ -397,6 +397,7 @@ def test_model(count, cumu_rewards, episode, test):
 
         next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
         state = next_state
+        return cumu_rewards
 
 
 
@@ -531,7 +532,7 @@ with tf.device('/gpu:0'):
                 if episode % 20 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
-                    cumu_rewards =0
+                    cumu_rewards = 0
                     for i in range(1,10):
                         test_model(i, cumu_rewards, episode=episode, test=True)
 
