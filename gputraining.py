@@ -530,9 +530,9 @@ with tf.device('/gpu:0'):
                 if episode % 20 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
                     print("Model Saved")
-                    for i in range(0,9):
+                    for i in range(0,10):
                         test_model(episode, test=True)
-                        print("Average reward", total_reward/10)
+                    print("Average reward", total_reward/10)
 
 
 with tf.Session() as sess:
