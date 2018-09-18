@@ -115,23 +115,23 @@ class DQNetwork:
     def __init__(self, state_size, action_size, name='DQNetwork'):
         self.state_size = state_size
         self.action_size = action_size
-        '''
-        self.learning_rate_init = 0.00005
+        
+        self.learning_rate_init = 0.00025
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
-        '''
+        
 
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
 
 	
-        '''
+        
         self.learning_rate = tf.train.exponential_decay(self.learning_rate_init,
                                                        self.global_step,
                                                         self.learning_rate_decay_steps,
                                                         self.learning_rate_decay, staircase=True)   
-        '''
+        
 
-        self.learning_rate = 0.00001
+        #self.learning_rate = 0.00025
         tf.summary.scalar("learning_rate", self.learning_rate)
 
         with tf.variable_scope(name):
@@ -165,7 +165,7 @@ class DQNetwork:
             #print("Conv1 biases:", conv1_bias_val)
 
 
-            self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
+            self.conv1_out = tf.nn.elu(self.conv1, name="conv1_out")
             tf.summary.histogram("conv1_out", self.conv1_out)
 
             """
@@ -181,7 +181,7 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv2")
 
-            self.conv2_out = tf.nn.relu(self.conv2, name="conv2_out")
+            self.conv2_out = tf.nn.elu(self.conv2, name="conv2_out")
             tf.summary.histogram("conv2_out", self.conv2_out)
 
             """
@@ -197,7 +197,7 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv3")
 
-            self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
+            self.conv3_out = tf.nn.elu(self.conv3, name="conv3_out")
             tf.summary.histogram("conv3_out", self.conv3_out)
 
 
@@ -205,7 +205,6 @@ class DQNetwork:
 
             self.fc = tf.layers.dense(inputs=self.flatten,
                                       units=512,
-                                      activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                       name="fc1")
 
@@ -294,7 +293,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run3') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/run7') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -379,7 +378,7 @@ def test_model(episode, test):
             file = open('Q values', 'a') # CHANGE
             file.write('\nThe max steps is now 10,000')
             file.write('\nGamma is 0.99\n')
-            file.write('The initial learning rate is 0.00001\n')
+            file.write('The initial learning rate is 0.00025 and decaying with ELU and the use of Adam\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
             with open('Q values', 'a') as file: #CHANGE
                 file.write('{0}{0} {1}'.format(os.linesep, Qs))
@@ -563,5 +562,6 @@ with tf.Session() as sess:
         test_model(episode,test=False)
 
     env.close()
+
 
 
