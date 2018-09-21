@@ -6,14 +6,14 @@ import os
 from collections import deque       # Ordered collection with ends
 from nes_py.wrappers import BinarySpaceToDiscreteSpaceEnv
 import gym_super_mario_bros         # import Kautenja's gym environment
-from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
+from gym_super_mario_bros.actions import RIGHT_ONLY
 from skimage import transform       # Help us to preprocess the frames
 from skimage.color import rgb2gray  # Help us to gray our frames
 warnings.filterwarnings('ignore')   # used to ignore warning messages
 
 # Create our environment
 env = gym_super_mario_bros.make('SuperMarioBros-v0') # Creates the environment
-env = BinarySpaceToDiscreteSpaceEnv(env, COMPLEX_MOVEMENT) # have to pick complex movement to try different combos
+env = BinarySpaceToDiscreteSpaceEnv(env, RIGHT_ONLY) # have to pick complex movement to try different combos
 
 #env.render() # updates the action within the game or pretty much shows you the game is playing
 
@@ -91,11 +91,11 @@ batch_size = 32                # Batch size
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
 explore_stop = 0.1            # minimum exploration probability
-decay_rate = 0.000005           # exponential decay rate for exploration prob
+decay_rate = 0.0000004           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
-gamma = 0.90                    # Discounting rate
+gamma = 0.99                    # Discounting rate
 
 ### MEMORY HYPERPARAMETERSde a bet wi
 pretrain_length = batch_size   # Number of experiences stored in the Memory when initialized for the first time
@@ -116,7 +116,7 @@ class DQNetwork:
         self.state_size = state_size
         self.action_size = action_size
         
-        self.learning_rate_init = 0.00025
+        self.learning_rate_init = 0.00001
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
         
@@ -293,7 +293,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run1') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/run') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -376,12 +376,12 @@ def test_model(episode, test):
         Qs = sess.run(DQNetwork.output, feed_dict={DQNetwork.inputs_: state})
         if test:
             file = open('Q values', 'a') # CHANGE
-            file.write('\nThe max steps is now 10,000 and now giving it 11 actions')
-            file.write('\nGamma is 0.90\n')
-            file.write('The initial learning rate is 0.00025 and decaying with ELU and the use of AdamOptimizer\n')
+            file.write('\nThe max steps is now 10,000 and now giving it 5 actions')
+            file.write('\nGamma is 0.99\n')
+            file.write('The initial learning rate is 0.00005 decaying with ELU and the use of AdamOptimizer new exploration decay rate\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
-            with open('Q values', 'a') as file: #CHANGE
-                file.write('{0}{0} {1}'.format(os.linesep, Qs))
+            #with open('Q values', 'a') as file: #CHANGE
+            #    file.write('{0}{0} {1}'.format(os.linesep, Qs))
             #print('Q values are', Qs)
             #f = open('Q values.txt', 'w')
             #f.write('{}'.format(Qs))
@@ -412,7 +412,7 @@ def test_model(episode, test):
 # Saver will help us to save our model
 saver = tf.train.Saver()
 
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
 
     if training == True:
         with tf.Session() as sess:
