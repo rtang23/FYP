@@ -86,12 +86,12 @@ action_size = env.action_space.n # 8 possible actions
 ### TRAINING HYPERPARAMETERS
 total_episodes = 50000         # Total episodes for training
 max_steps = 10000              # Max possible steps in an episode
-batch_size = 32                # Batch size
+batch_size = 16                # Batch size
 
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
 explore_stop = 0.1            # minimum exploration probability
-decay_rate = 0.0000004           # exponential decay rate for exploration prob
+decay_rate = 0.00001           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
@@ -116,7 +116,7 @@ class DQNetwork:
         self.state_size = state_size
         self.action_size = action_size
         
-        self.learning_rate_init = 0.00001
+        self.learning_rate_init = 0.00025
         self.learning_rate_decay_steps = 5
         self.learning_rate_decay = 0.99999
         
@@ -293,7 +293,7 @@ for i in range(pretrain_length):
         state = next_state
 
 # Setup TensorBoard Writer
-writer = tf.summary.FileWriter('tensorboard/dqn/run') # CHANGE
+writer = tf.summary.FileWriter('tensorboard/dqn/batchsize16run') # CHANGE
 
 ## Losses
 tf.summary.scalar("Loss", DQNetwork.loss)
@@ -378,7 +378,7 @@ def test_model(episode, test):
             file = open('Q values', 'a') # CHANGE
             file.write('\nThe max steps is now 10,000 and now giving it 5 actions')
             file.write('\nGamma is 0.99\n')
-            file.write('The initial learning rate is 0.00005 decaying with ELU and the use of AdamOptimizer new exploration decay rate\n')
+            file.write('The initial learning rate is 0.00025 decaying with ELU and the use of AdamOptimizer and original exploration decay rate\n')
             file.write('{0}{0} Q values are for Test Episode: {1}'.format(os.linesep, episode))
             #with open('Q values', 'a') as file: #CHANGE
             #    file.write('{0}{0} {1}'.format(os.linesep, Qs))
