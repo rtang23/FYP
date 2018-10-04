@@ -91,7 +91,7 @@ batch_size = 16                # Batch size
 # Exploration parameters for epsilon greedy strategy
 explore_start = 1.0            # exploration probability at start
 explore_stop = 0.1            # minimum exploration probability
-decay_rate = 0.00001           # exponential decay rate for exploration prob
+decay_rate = 0.0001           # exponential decay rate for exploration prob
 
 
 # Q learning hyperparameters
@@ -158,14 +158,13 @@ class DQNetwork:
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv1")
 
-            #gr = tf.get_default_graph()
-            #conv1_kernel_val = gr.get_tensor_by_name('conv1/kernel:0').eval()
-            #conv1_bias_val = gr.get_tensor_by_name('conv1/bias:0').eval()
-            #print("Conv1 weights:", conv1_kernel_val)
-            #print("Conv1 biases:", conv1_bias_val)
+            self.conv1_batchnorm = tf.layers.batch_normalization(self.conv1,
+                                                                 training=True,
+                                                                 epsilon=1e-5,
+                                                                 name='batch_norm1')
 
 
-            self.conv1_out = tf.nn.elu(self.conv1, name="conv1_out")
+            self.conv1_out = tf.nn.elu(self.conv1_batchnorm, name="conv1_out")
             tf.summary.histogram("conv1_out", self.conv1_out)
 
             """
@@ -180,8 +179,12 @@ class DQNetwork:
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv2")
+            self.conv2_batchnorm = tf.layers.batch_normalization(self.conv2,
+                                                                 training=True,
+                                                                 epsilon=1e-5,
+                                                                 name='batch_norm2')
 
-            self.conv2_out = tf.nn.elu(self.conv2, name="conv2_out")
+            self.conv2_out = tf.nn.elu(self.conv2_batchnorm, name="conv2_out")
             tf.summary.histogram("conv2_out", self.conv2_out)
 
             """
@@ -196,8 +199,12 @@ class DQNetwork:
                                           padding="VALID",
                                           kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
                                           name="conv3")
+            self.conv3_batchnorm = tf.layers.batch_normalization(self.conv3,
+                                                                 training=True,
+                                                                 epsilon=1e-5,
+                                                                 name='batch_norm3')
 
-            self.conv3_out = tf.nn.elu(self.conv3, name="conv3_out")
+            self.conv3_out = tf.nn.elu(self.conv3_batchnorm, name="conv3_out")
             tf.summary.histogram("conv3_out", self.conv3_out)
 
 
@@ -219,7 +226,7 @@ class DQNetwork:
             # make actions a integer and then turn it into one hot encoded to multiply
             #self.Q = tf.gather(self.output, self.actions_)
             self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_)) # size of this is (None)
-            print("Q size is:", tf.Tensor.get_shape(self.Q))
+            #print("Q size is:", tf.Tensor.get_shape(self.Q))
 
             # The loss is the difference between our predicted Q_values and the Q_target
             # Sum(Qtarget - Q)^2
