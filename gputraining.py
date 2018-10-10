@@ -130,7 +130,7 @@ class DQNetwork:
                                                         self.learning_rate_decay_steps,
                                                         self.learning_rate_decay, staircase=True)   
         
-
+        self.learning_rate_op = tf.maximum(self.learning_rate_init, self.learning_rate)
         #self.learning_rate = 0.00025
         tf.summary.scalar("learning_rate", self.learning_rate)
 
@@ -233,7 +233,7 @@ class DQNetwork:
             self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q), name="loss") # size of this is (None)
             # print("Loss size is:", tf.Tensor.get_shape(self.loss))
             tf.summary.scalar("loss", self.loss)
-            self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(self.learning_rate_op).minimize(self.loss, global_step=self.global_step)
 
 
 # Reset the graph
